@@ -1,0 +1,6 @@
+project_name         = "terafarmtes"
+location             = "eastus"
+instance_type        = "Standard_B1s"
+ssh_allowed_cidr     = "0.0.0.0/0"
+admin_username       = "azureuser"
+admin_ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQD..."

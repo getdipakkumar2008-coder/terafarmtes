@@ -1,0 +1,76 @@
+name: Provision Azure VM with Terraform
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Terraform action"
+        required: true
+        type: choice
+        options:
+          - apply
+          - destroy
+      location:
+        description: "Azure region"
+        required: true
+        default: eastus
+      instance_type:
+        description: "Azure VM size"
+        required: true
+        default: Standard_B1s
+      project_name:
+        description: "Project name prefix"
+        required: true
+        default: terafarmtes
+      admin_username:
+        description: "VM admin username"
+        required: true
+        default: azureuser
+      ssh_allowed_cidr:
+        description: "CIDR allowed for SSH"
+        required: true
+        default: 0.0.0.0/0
+
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+
+    env:
+      TF_IN_AUTOMATION: "true"
+      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      ARM_ACCESS_KEY: ${{ secrets.ARM_ACCESS_KEY }}
+      TF_STATE_RESOURCE_GROUP: ${{ secrets.TF_STATE_RESOURCE_GROUP }}
+      TF_STATE_STORAGE_ACCOUNT: ${{ secrets.TF_STATE_STORAGE_ACCOUNT }}
+      TF_STATE_CONTAINER: ${{ secrets.TF_STATE_CONTAINER }}
+      TF_STATE_KEY: ${{ secrets.TF_STATE_KEY != '' && secrets.TF_STATE_KEY || 'terafarmtes/vm/terraform.tfstate' }}
+      TF_VAR_location: ${{ github.event.inputs.location }}
+      TF_VAR_instance_type: ${{ github.event.inputs.instance_type }}
+      TF_VAR_project_name: ${{ github.event.inputs.project_name }}
+      TF_VAR_admin_username: ${{ github.event.inputs.admin_username }}
+      TF_VAR_ssh_allowed_cidr: ${{ github.event.inputs.ssh_allowed_cidr }}
+      TF_VAR_admin_ssh_public_key: ${{ secrets.AZURE_SSH_PUBLIC_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform apply or destroy
+        run: |
+          chmod +x scripts/terraform_vm.sh
+          scripts/terraform_vm.sh "${{ github.event.inputs.action }}"
+
+      - name: Show Terraform outputs
+        if: ${{ github.event.inputs.action == 'apply' }}
+        run: terraform -chdir=terraform output
