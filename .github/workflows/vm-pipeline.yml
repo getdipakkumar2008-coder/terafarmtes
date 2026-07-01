@@ -61,6 +61,7 @@ jobs:
 
     steps:
       - name: Validate required secrets
+        id: validate_secrets
         run: |
           missing=()
           [[ -z "${ARM_CLIENT_ID}"           ]] && missing+=("ARM_CLIENT_ID")
@@ -75,21 +76,26 @@ jobs:
             printf '  - %s\n' "${missing[@]}"
             echo ""
             echo "Add these secrets under Settings > Secrets and variables > Actions before running this workflow."
-            exit 1
+            echo "secrets_valid=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "All required secrets are present."
+            echo "secrets_valid=true" >> "$GITHUB_OUTPUT"
           fi
-          echo "All required secrets are present."
 
       - name: Checkout
+        if: steps.validate_secrets.outputs.secrets_valid == 'true'
         uses: actions/checkout@v4
 
       - name: Setup Terraform
+        if: steps.validate_secrets.outputs.secrets_valid == 'true'
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform apply or destroy
+        if: steps.validate_secrets.outputs.secrets_valid == 'true'
         run: |
           chmod +x scripts/terraform_vm.sh
           scripts/terraform_vm.sh "${{ github.event.inputs.action }}"
 
       - name: Show Terraform outputs
-        if: ${{ github.event.inputs.action == 'apply' }}
+        if: steps.validate_secrets.outputs.secrets_valid == 'true' && github.event.inputs.action == 'apply'
         run: terraform -chdir=terraform output
