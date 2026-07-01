@@ -60,6 +60,25 @@ jobs:
       TF_VAR_admin_ssh_public_key: ${{ secrets.AZURE_SSH_PUBLIC_KEY }}
 
     steps:
+      - name: Validate required secrets
+        run: |
+          missing=()
+          [[ -z "${ARM_CLIENT_ID}"           ]] && missing+=("ARM_CLIENT_ID")
+          [[ -z "${ARM_CLIENT_SECRET}"       ]] && missing+=("ARM_CLIENT_SECRET")
+          [[ -z "${ARM_SUBSCRIPTION_ID}"     ]] && missing+=("ARM_SUBSCRIPTION_ID")
+          [[ -z "${ARM_TENANT_ID}"           ]] && missing+=("ARM_TENANT_ID")
+          [[ -z "${TF_STATE_RESOURCE_GROUP}" ]] && missing+=("TF_STATE_RESOURCE_GROUP")
+          [[ -z "${TF_STATE_STORAGE_ACCOUNT}" ]] && missing+=("TF_STATE_STORAGE_ACCOUNT")
+          [[ -z "${TF_STATE_CONTAINER}"      ]] && missing+=("TF_STATE_CONTAINER")
+          if [[ ${#missing[@]} -gt 0 ]]; then
+            echo "The following required repository secrets are not configured:"
+            printf '  - %s\n' "${missing[@]}"
+            echo ""
+            echo "Add these secrets under Settings > Secrets and variables > Actions before running this workflow."
+            exit 1
+          fi
+          echo "All required secrets are present."
+
       - name: Checkout
         uses: actions/checkout@v4
 
